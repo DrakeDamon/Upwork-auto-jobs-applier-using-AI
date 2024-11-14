@@ -7,14 +7,13 @@ import pandas as pd
 from datetime import datetime
 from tqdm import tqdm
 from playwright.sync_api import sync_playwright
-import google.generativeai as genai
-from .structured_outputs import (
+from structured_outputs import (
     JobInformation,
     JobScores,
     CoverLetter,
     CallScript,
 )
-from .prompts import (
+from prompts import (
     SCRAPER_PROMPT_TEMPLATE, 
     SCORE_JOBS_PROMPT_TEMPLATE, 
     GENERATE_COVER_LETTER_PROMPT_TEMPLATE,
@@ -26,27 +25,9 @@ SCRAPED_JOBS_FOLDER = "./files/upwork_job_listings/"
 def call_gemini_api(
     prompt: str, response_schema=None, model="gemini-1.5-flash"
 ) -> tuple:
-    llm = genai.GenerativeModel(model)
-    if response_schema is not None:
-        llm = genai.GenerativeModel(
-            model,
-            generation_config={
-                "response_mime_type": "application/json",
-                "response_schema": response_schema,
-            },
-        )
-
-    completion = llm.generate_content(prompt)
-    usage_metadata = completion.usage_metadata
-    token_counts = {
-        "input_tokens": usage_metadata.prompt_token_count,
-        "output_tokens": usage_metadata.candidates_token_count,
-    }
-    try:
-        output = json.loads(completion.text)
-    except json.JSONDecodeError:
-        output = completion.text
-    return output, token_counts
+    # Note: The genai import has been removed since you mentioned not needing Google's services.
+    # You should replace this with the actual implementation or another AI service if needed.
+    pass
 
 def scrape_website_to_markdown(url: str) -> str:
     USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36"
@@ -90,8 +71,10 @@ async def generate_document(document_type: str, job_title: str, job_description:
     else:
         raise ValueError(f"Unknown document type: {document_type}")
 
-    completion, _ = call_gemini_api(prompt, CoverLetter if document_type == "cover_letter" else CallScript)
-    return completion.get("letter") if document_type == "cover_letter" else completion.get("script")
+    # Note: You'll need to implement this with an actual AI service since we removed the Google Generative AI.
+    # completion, _ = call_gemini_api(prompt, CoverLetter if document_type == "cover_letter" else CallScript)
+    # return completion.get("letter") if document_type == "cover_letter" else completion.get("script")
+    return "This is where the document would be generated."
 
 def save_job_data_to_csv(jobs_data):
     os.makedirs(SCRAPED_JOBS_FOLDER, exist_ok=True)

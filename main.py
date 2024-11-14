@@ -1,21 +1,35 @@
 import os
-from dotenv import load_dotenv
-from src.utils import read_text_file
-from src.graph import UpworkAutomation
-import google.generativeai as genai
+import sys
+from apify_client import ApifyClient
+import asyncio
 
-# Load environment variables from a .env file
-load_dotenv()
+# Append the src directory to sys.path if it's not already there
+src_path = os.path.abspath('src')
+if src_path not in sys.path:
+    sys.path.append(src_path)
 
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+from utils import run_apify_actor
+
+async def main():
+    # Retrieve API token from environment variable
+    token = os.getenv('APIFY_API_TOKEN')
+    if not token:
+        raise ValueError("API token not found. Set the APIFY_API_TOKEN environment variable.")
+
+    # Initialize the Apify client
+    client = ApifyClient(token)
+
+    # Example query - you might want to get this from actor input
+    query = "AI agent"
+    
+    # Run your scraping logic
+    jobs = await run_apify_actor(query)
+    
+    # Get or create a dataset
+    dataset = await client.dataset().get_or_create()
+    
+    # Push the results to an Apify dataset
+    await dataset.push_items(jobs)
 
 if __name__ == "__main__":
-    # Job title to look for
-    job_title = "AI agent Developer"
-
-    # load the freelancer profile
-    profile = read_text_file("./files/profile.md")
-
-    # run automation
-    automation = UpworkAutomation(profile)
-    automation.run(job_title=job_title)
+    asyncio.run(main())

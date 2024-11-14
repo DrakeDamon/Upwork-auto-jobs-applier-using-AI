@@ -1,7 +1,7 @@
-langgraph
-playwright
+apify-client
 html2text
 pandas
-google-generativeai
-colorama
+tqdm
+playwright
+pydantic
 python-dotenv

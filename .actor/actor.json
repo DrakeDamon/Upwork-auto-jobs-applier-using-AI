@@ -1,0 +1,11 @@
+{
+  "name": "Your-AI-Job-Scraper",
+  "version": "0.0",
+  "buildTag": "latest",
+  "env": null,
+  "template": null,
+  "dockerfile": "Dockerfile",
+  "deploy_tag": "latest",
+  "build_command": "pip install -r requirements.txt",
+  "start_command": "python main.py"
+}
