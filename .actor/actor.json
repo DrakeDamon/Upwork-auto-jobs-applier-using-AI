@@ -1,11 +1,40 @@
 {
-  "name": "Your-AI-Job-Scraper",
-  "version": "0.0",
+  "name": "Upwork-auto-jobs-applier-using-AI",
+  "version": "1.0.0",
   "buildTag": "latest",
-  "env": null,
-  "template": null,
+  "env": {
+    "APIFY_API_TOKEN": "@APIFY_API_TOKEN@"
+  },
+  "template": "python3",
   "dockerfile": "Dockerfile",
   "deploy_tag": "latest",
   "build_command": "pip install -r requirements.txt",
-  "start_command": "python main.py"
+  "start_command": "python3 main.py",
+  "actorSpecification": {
+    "input": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "title": "Search Query",
+          "description": "The job search query for Upwork."
+        }
+      },
+      "required": ["query"]
+    },
+    "output": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "url": { "type": "string" },
+          "score": { "type": "number" },
+          "cover_letter": { "type": "string" },
+          "intro_message": { "type": "string" }
+        }
+      }
+    }
+  }
 }

@@ -107,50 +107,26 @@ You are a freelance interview preparation coach. Create a call script for discus
 Return your final output in markdown format.
 """
 
-def run_scraper(query):
-    client = ApifyClient(API_TOKEN)
+# Intro Message Generation Prompt Template
+GENERATE_INTRO_MESSAGE_PROMPT_TEMPLATE = """
+Your role is to craft an introductory message for a freelancer to potential clients on Upwork, focusing on AI agent development and related fields:
 
-    # Run the actor
-    run = client.actor(ACTOR_ID).call(run_input={"query": query, "budget": {"min": 15}})
-    
-    # Wait for the actor to finish
-    while run['status'] != 'SUCCEEDED':
-        run = client.run(run['id']).get()
-        # Add a delay here if needed
+**Profile Details:**
+<profile>
+{profile}
+</profile>
 
-    # Fetch the results
-    dataset_items = client.dataset(run['defaultDatasetId']).iterate_items()
-    results = list(dataset_items)
-    return results
+**Job Details:**
+- Title: {job_title}
+- Skills Required: {skills_required}
 
-def score_jobs(jobs, profile):
-    # This function would use an AI model to score jobs based on the profile
-    # Here's a placeholder where you would integrate with an AI service like OpenAI's API
-    # For demonstration, let's just return a mock score
-    return [{"job": job, "score": i%10 + 1} for i, job in enumerate(jobs)]
-
-def generate_cover_letter(profile, job_description):
-    # Placeholder for AI-powered cover letter generation
-    return f"Generated Cover Letter for job: {job_description[:50]}..."
-
-def generate_call_script(job_description):
-    # Placeholder for AI-powered call script generation
-    return f"Generated Call Script for job: {job_description[:50]}..."
-
-if __name__ == "__main__":
-    YOUR_NAME = "Aymen"  # Change this to your name
-    FREELANCER_PROFILE = "Your skills and experience here..."  # Replace with actual profile data
-
-    # Scrape jobs
-    query = "ai agent"
-    upwork_jobs = run_scraper(query)
-
-    # Score jobs
-    scored_jobs = score_jobs(upwork_jobs, FREELANCER_PROFILE)
-
-    # Generate cover letters and call scripts for top jobs (e.g., top 3)
-    for job in sorted(scored_jobs, key=lambda x: x['score'], reverse=True)[:3]:
-        job_description = job['job']['description']
-        print(f"\nJob Title: {job['job']['title']}")
-        print(generate_cover_letter(FREELANCER_PROFILE, job_description))
-        print(generate_call_script(job_description))
+**Instructions:**
+- Introduce yourself professionally, using your name: {your_name}.
+- Briefly highlight your expertise in AI agent development, virtual assistants, NLP, Machine Learning, etc.
+- Express interest in the job and how your skills align with the job requirements.
+- Mention your availability for contract or part-time work.
+- State your minimum rate of $15 per hour.
+- Keep the message concise, aiming for no more than 100 words.
+- End with a call to action, inviting the client to discuss the project further.
+- Use a friendly yet professional tone.
+"""

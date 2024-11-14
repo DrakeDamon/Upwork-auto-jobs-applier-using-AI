@@ -2,13 +2,17 @@ import os
 import sys
 from apify_client import ApifyClient
 import asyncio
+from dotenv import load_dotenv
+
+# Load environment variables from a .env file
+load_dotenv()
 
 # Append the src directory to sys.path if it's not already there
 src_path = os.path.abspath('src')
 if src_path not in sys.path:
     sys.path.append(src_path)
 
-from utils import run_apify_actor
+from utils import run_apify_actor  # Assuming run_apify_actor is in utils.py inside src/
 
 async def main():
     # Retrieve API token from environment variable
@@ -25,11 +29,15 @@ async def main():
     # Run your scraping logic
     jobs = await run_apify_actor(query)
     
-    # Get or create a dataset
-    dataset = await client.dataset().get_or_create()
+    # Create a new dataset
+    dataset = await client.datasets().create()
     
-    # Push the results to an Apify dataset
+    # Push the results to the Apify dataset
     await dataset.push_items(jobs)
+
+    # Fetch and print Actor results from the dataset
+    async for item in dataset.iterate_items():
+        print(item)
 
 if __name__ == "__main__":
     asyncio.run(main())
