@@ -10,32 +10,5 @@
   "deploy_tag": "latest",
   "build_command": "pip install -r requirements.txt",
   "start_command": "python3 main.py",
-  "actorSpecification": {
-    "version": 1,
-    "input": {
-      "type": "object",
-      "properties": {
-        "query": {
-          "type": "string",
-          "title": "Search Query",
-          "description": "The job search query for Upwork."
-        }
-      },
-      "required": ["query"]
-    },
-    "output": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "title": { "type": "string" },
-          "description": { "type": "string" },
-          "url": { "type": "string" },
-          "score": { "type": "number" },
-          "cover_letter": { "type": "string" },
-          "intro_message": { "type": "string" }
-        }
-      }
-    }
-  }
+  "actorSpecification": 1
 }

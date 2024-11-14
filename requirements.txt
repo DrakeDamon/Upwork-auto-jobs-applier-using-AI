@@ -5,3 +5,4 @@ tqdm
 playwright
 pydantic
 python-dotenv
+apify ~= 2.0.0

@@ -39,3 +39,5 @@ CMD ["python", "main.py"]
 
 # Expose port if needed (e.g., for web interfaces or APIs)
 # EXPOSE 8000
+
+CMD npm start -silent
