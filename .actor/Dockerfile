@@ -5,11 +5,10 @@ FROM python:3.9-slim
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
-# Ensure the package lists are updated and the timezone is set
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-       tzdata \
-       curl \
+# Ensure the package lists are updated and necessary system packages are installed
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tzdata \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the timezone to UTC for consistency across different environments
@@ -24,7 +23,6 @@ RUN mkdir -p /home/myuser/app \
     && chown -R myuser:myuser /home/myuser/app
 
 # Copy the requirements file into the container, and then install dependencies
-# This is done before copying the rest of the app to leverage Docker's caching mechanism
 COPY --chown=myuser:myuser requirements.txt /home/myuser/app/
 WORKDIR /home/myuser/app
 RUN pip install --no-cache-dir -r requirements.txt
@@ -39,5 +37,5 @@ USER myuser
 # Set the command to run when the container starts
 CMD ["python", "main.py"]
 
-# Expose port 8000 if your application serves a web interface or API (optional, based on your needs)
+# Expose port if needed (e.g., for web interfaces or APIs)
 # EXPOSE 8000

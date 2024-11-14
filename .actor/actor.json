@@ -11,6 +11,7 @@
   "build_command": "pip install -r requirements.txt",
   "start_command": "python3 main.py",
   "actorSpecification": {
+    "version": 1,
     "input": {
       "type": "object",
       "properties": {
