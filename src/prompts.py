@@ -1,23 +1,46 @@
+import json
+import os
+from apify_client import ApifyClient
+from dotenv import load_dotenv
+
+# Load environment variables from a .env file
+load_dotenv()
+
+# Constants
+API_TOKEN = os.environ.get('APIFY_API_TOKEN')
+ACTOR_ID = "username~your-actor-name"  # Replace with your actor's ID
+DESIRED_RATE = "15"  # Desired rate in USD per hour
+
+# Job Scraper Prompt Template
 SCRAPER_PROMPT_TEMPLATE = """
-Extract the relevant data from this page content:
+Extract the following data from this page content:
+
+- **Job Title**
+- **Location**
+- **Skills Required**: Focus on AI Agent Development, Virtual Assistant Design, NLP, Machine Learning, Chatbot Programming, Conversational AI, Python, JavaScript, TensorFlow, PyTorch, Dialogflow
+- **Budget**: Ensure the rate is at least $15 per hour
+- **Job Type**: Only consider Contract or Part-Time jobs
+- **Client Rating**
 
 <content>
 {markdown_content}
 </content>
 
-**Important** FORMAT ALL EXTRACTED FIELD IN AN EASILY READABLE
+Format the extracted data in a JSON format for easy parsing.
 """
 
+# Job Scoring Prompt Template
 SCORE_JOBS_PROMPT_TEMPLATE = """
-You are a job matching expert specializing in pairing freelancers with the most suitable Upwork jobs. 
-Your task is to evaluate each job based on the following criteria:
+You are a job matching expert specializing in jobs related to:
 
-1. **Relevance to Freelancer Profile**: Assess how closely the job matches the skills, experience, and qualifications outlined in the freelancer's profile.
-2. **Complexity of the Project**: Determine the complexity level of the job and how it aligns with the freelancer's expertise.
-3. **Rate**: If the job's rate is provided evaluate the compensation compared to industry standards otherwise ignore it.
-4. **Client History**: Consider the client's previous hiring history, totals amount spent, active jobs and longevity on the platform.
+1. **Skills**: AI Agent Development, Virtual Assistant Design, NLP, Machine Learning, Chatbot Programming, Conversational AI, Python, JavaScript, TensorFlow, PyTorch, Dialogflow
+2. **Experience Level**: Intermediate to Expert in AI and Software Development
+3. **Project Type**: AI-driven solutions, chatbot services, virtual assistant projects
+4. **Rate**: Ensure the job pays at least $15 per hour, and evaluate it against your desired rate of {desired_rate}.
+5. **Job Type**: Only consider Contract or Part-Time jobs
+6. **Client History**: Prefer clients with a track record in tech projects, high spending, and longevity on Upwork.
 
-For each job, assign a score from 1 to 10 based on the above criteria, with 10 being the best match. 
+For each job, assign a score from 1 to 10 based on how well it matches these criteria:
 
 Freelancer Profile:
 <profile>
@@ -28,11 +51,14 @@ Jobs to evaluate:
 {jobs}
 """
 
+# Cover Letter Generation Prompt Template
 GENERATE_COVER_LETTER_PROMPT_TEMPLATE = """
 # ROLE
-
-You are an Upwork cover letter specialist, crafting targeted and personalized proposals. 
-Create persuasive cover letters that align with job requirements while highlighting the freelancer’s skills and experience.
+You are an Upwork cover letter specialist, focusing on highlighting qualifications like:
+- AI Agent Development
+- Virtual Assistant Design
+- Expertise in NLP and Machine Learning
+- Proficiency in Python, JavaScript, TensorFlow, PyTorch
 
 Freelancer Profile:
 <profile>
@@ -40,45 +66,32 @@ Freelancer Profile:
 </profile>
 
 # SOP
+1. Address the job's needs, especially those related to AI development and virtual assistants.
+2. Illustrate how your background in AI and related technologies meets these needs.
+3. Show enthusiasm for creating innovative AI solutions.
+4. Specifically mention your availability for contract or part-time work and your minimum rate of $15 per hour.
+5. Keep the letter concise, under 150 words.
+6. Integrate job-related keywords naturally.
 
-1. Address the client's needs from the job description; do not over-emphasize the freelancer's profile.
-2. Illustrate how the freelancer can meet these needs based on their past experience.
-3. Show enthusiasm for the job and its concept.
-4. Keep the letter under 150 words, maintaining a firendly and concise tone.
-5. Integrate job-related keywords naturally.
-6. Briefly mention relevant past projects from the freelancer's profile if applicable.
-
-# Example Letter:
-letter>
-Hey there!
-
-I’m excited about the opportunity to design and implement AI-driven solutions for OpenAI! 
-I have strong background in AI development and automation engineering, I believe I can deliver impactful results for your business.
-
-My Past Projects:
-- Developed an AI Voice Assistant for managing customer interactions, which efficiently handled inbound queries and streamlined communication processes—perfect for your needs in developing voice systems.
-- Designed an AI-driven email automation system that enhanced workflow efficiency by automating responses and administrative tasks.
-- Implemented an AI automated outreach solution for lead generation, personalized email outreach, and outbound prospecting.
-
-I would love to discuss how my experience can help optimize your operations, enhance sales and marketing automation, and ultimately drive success for OpenAI!
-
-Best,  
-Aymen
-</letter>
-
-Job Desciption:
+Job Description:
 <job_description>
 {job_description}
 </job_description>
 
 # **IMPORTANT**
-* My name is: Aymen; include it at the end of the letters.
+* My name is: {your_name}; include it at the end of the letters.
 * Follow the example letter format and structure.
-* Do not invent any information that is not present in my profile.
+* Do not invent information not present in my profile.
 """
 
+# Call Script Generation Prompt Template
 GENERATE_CALL_SCRIPT_PROMPT_TEMPLATE = """
-You are a **freelance interview preparation coach**. Your task is to create a tailored call script for a freelancer preparing for an interview with a client. The script should help the freelancer confidently discuss their qualifications and experiences relevant to the job description provided.
+You are a freelance interview preparation coach. Create a call script for discussing these qualifications:
+
+- **Skills**: AI Agent Development, Virtual Assistant Design, NLP, Machine Learning, Chatbot Programming, Python, JavaScript, TensorFlow, PyTorch, Dialogflow
+- **Experience**: Projects involving AI conversational agents, virtual assistants, or similar tech solutions
+- **Availability**: Emphasize your interest in contract or part-time work
+- **Rate**: Mention that you expect a rate of at least $15 per hour
 
 ### Job Description:
 <job_description>
@@ -86,12 +99,58 @@ You are a **freelance interview preparation coach**. Your task is to create a ta
 </job_description>
 
 ### Instructions:
-1. Start with a brief introduction the freelancer can use to introduce themselves.
-2. Include key points the freelancer should mention regarding their relevant experience and skills related to the job.
-3. List 10 potential questions that the client might ask during the interview.
-4. Suggest 10 questions the freelancer might ask the client to demonstrate interest and clarify project details.
-5. Maintain a friendly and professional tone throughout the script.
+1. Introduction highlighting your qualifications in AI and virtual assistant technology, and your flexibility for contract or part-time work.
+2. Key points on how your experience matches the job, especially in creating AI solutions.
+3. Potential questions about your experience with NLP, machine learning, and development tools.
+4. Questions you might ask about the AI project scope, expected outcomes, integration details, and confirmation of the hourly rate.
 
-### Output:
 Return your final output in markdown format.
 """
+
+def run_scraper(query):
+    client = ApifyClient(API_TOKEN)
+
+    # Run the actor
+    run = client.actor(ACTOR_ID).call(run_input={"query": query, "budget": {"min": 15}})
+    
+    # Wait for the actor to finish
+    while run['status'] != 'SUCCEEDED':
+        run = client.run(run['id']).get()
+        # Add a delay here if needed
+
+    # Fetch the results
+    dataset_items = client.dataset(run['defaultDatasetId']).iterate_items()
+    results = list(dataset_items)
+    return results
+
+def score_jobs(jobs, profile):
+    # This function would use an AI model to score jobs based on the profile
+    # Here's a placeholder where you would integrate with an AI service like OpenAI's API
+    # For demonstration, let's just return a mock score
+    return [{"job": job, "score": i%10 + 1} for i, job in enumerate(jobs)]
+
+def generate_cover_letter(profile, job_description):
+    # Placeholder for AI-powered cover letter generation
+    return f"Generated Cover Letter for job: {job_description[:50]}..."
+
+def generate_call_script(job_description):
+    # Placeholder for AI-powered call script generation
+    return f"Generated Call Script for job: {job_description[:50]}..."
+
+if __name__ == "__main__":
+    YOUR_NAME = "Aymen"  # Change this to your name
+    FREELANCER_PROFILE = "Your skills and experience here..."  # Replace with actual profile data
+
+    # Scrape jobs
+    query = "ai agent"
+    upwork_jobs = run_scraper(query)
+
+    # Score jobs
+    scored_jobs = score_jobs(upwork_jobs, FREELANCER_PROFILE)
+
+    # Generate cover letters and call scripts for top jobs (e.g., top 3)
+    for job in sorted(scored_jobs, key=lambda x: x['score'], reverse=True)[:3]:
+        job_description = job['job']['description']
+        print(f"\nJob Title: {job['job']['title']}")
+        print(generate_cover_letter(FREELANCER_PROFILE, job_description))
+        print(generate_call_script(job_description))

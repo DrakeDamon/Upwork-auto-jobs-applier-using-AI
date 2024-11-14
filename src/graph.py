@@ -1,85 +1,55 @@
 import pandas as pd
-from datetime import datetime
+from typing import List, Dict, Any
 from langgraph.graph import END, StateGraph
 from typing_extensions import TypedDict
-from typing import List
 from colorama import Fore, Style
 from .utils import (
-    scrape_upwork_data,
-    score_scaped_jobs,
-    convert_jobs_matched_to_string_list,
-    generate_cover_letter,
-    generate_interview_script_content,
-    save_scraped_jobs_to_csv,
+    run_apify_actor,  # Assuming this function was added to utils based on prompts.py
+    process_jobs,
+    generate_document  # This function will be used for cover letter and intro message generation
 )
 
 COVER_LETTERS_FILE = "./files/cover_letter.txt"
 
-
 class GraphState(TypedDict):
     job_title: str
-    scraped_jobs_df: pd.DataFrame
-    matches: List[str]
+    scraped_jobs: List[Dict[str, Any]]
+    matches: List[Dict[str, Any]]
     job_description: str
     cover_letter: str
-    call_script: str
+    intro_message: str
     num_matches: int
-
 
 class UpworkAutomation:
     def __init__(self, profile, num_jobs=20):
-        # Freelancer profile/resume
         self.profile = profile
-
-        # Number of jobs to collect
         self.number_of_jobs = num_jobs
-
-        # Build graph
         self.graph = self.build_graph()
 
-    def scrape_upwork_jobs(self, state):
+    async def scrape_upwork_jobs(self, state: GraphState) -> GraphState:
         """
-        Scrape jobs based on job title provided
+        Scrape jobs from Upwork based on job title provided.
 
         @param state: The current state of the application.
         @return: Updated state with scraped jobs.
         """
-        job_title = state["job_title"]
+        print(Fore.YELLOW + f"----- Scraping Upwork jobs for: {state['job_title']} -----\n" + Style.RESET_ALL)
+        job_title = state['job_title']
+        scraped_jobs = await run_apify_actor(job_title)
+        print(Fore.GREEN + f"----- Scraped {len(scraped_jobs)} jobs -----\n" + Style.RESET_ALL)
+        return {**state, "scraped_jobs": scraped_jobs}
 
-        print(
-            Fore.YELLOW
-            + f"----- Scraping Upwork jobs for: {job_title} -----\n"
-            + Style.RESET_ALL
-        )
-        job_listings_df = scrape_upwork_data(job_title, self.number_of_jobs)
-
-        print(
-            Fore.GREEN
-            + f"----- Scraped {len(job_listings_df)} jobs -----\n"
-            + Style.RESET_ALL
-        )
-        return {**state, "scraped_jobs_df": job_listings_df}
-
-    def score_scraped_jobs(self, state):
+    def score_scraped_jobs(self, state: GraphState) -> GraphState:
         print(Fore.YELLOW + "----- Scoring scraped jobs -----\n" + Style.RESET_ALL)
-        jobs_df = score_scaped_jobs(state["scraped_jobs_df"], self.profile)
-        jobs_matched = jobs_df[jobs_df["score"] >= 7]
-        matches = convert_jobs_matched_to_string_list(jobs_matched)
-        return {
-            "scraped_jobs_df": jobs_df,
-            "matches": matches,
-            "num_matchs": len(matches),
-        }
+        processed_jobs = process_jobs(state['scraped_jobs'])
+        matches =[job for job in processed_jobs if job.get('score', 0) >= 7]
+        return {**state, "matches": matches, "num_matches": len(matches)}
 
-    def check_for_job_matches(self, state):
-        print(
-            Fore.YELLOW
-            + "----- Checking for remaining job matches -----\n"
-            + Style.RESET_ALL
-        )
+    def check_for_job_matches(self, state: GraphState) -> GraphState:
+        print(Fore.YELLOW + "----- Checking for remaining job matches -----\n" + Style.RESET_ALL)
         return state
 
-    def need_to_process_matches(self, state):
+    def need_to_process_matches(self, state: GraphState) -> str:
         """
         Check if there are any job matches.
 
@@ -88,20 +58,15 @@ class UpworkAutomation:
         """
         if len(state["matches"]) == 0:
             print(Fore.RED + "No job matches remaining\n" + Style.RESET_ALL)
-            save_scraped_jobs_to_csv(state["scraped_jobs_df"])
             return "No matches"
         else:
-            print(
-                Fore.GREEN
-                + f"There are {len(state['matches'])} Job matches remaining to process\n"
-                + Style.RESET_ALL
-            )
+            print(Fore.GREEN + f"There are {len(state['matches'])} Job matches remaining to process\n" + Style.RESET_ALL)
             return "Process jobs"
 
-    def generate_job_application_content(self, state):
+    def generate_job_application_content(self, state: GraphState) -> GraphState:
         return state
 
-    def generate_cover_letter(self, state):
+    async def generate_cover_letter(self, state: GraphState) -> GraphState:
         """
         Generate cover letter based on the job description and the profile.
 
@@ -109,40 +74,33 @@ class UpworkAutomation:
         @return: Updated state with generated cover letter.
         """
         print(Fore.YELLOW + "----- Generating cover letter -----\n" + Style.RESET_ALL)
-        matches = state["matches"]
-        job_description = str(matches[-1])
-        cover_letter = generate_cover_letter(job_description, self.profile)
-        return {"job_description": job_description, "cover_letter": cover_letter}
+        job = state['matches'][-1]
+        cover_letter = await generate_document("cover_letter", job['title'], job['description'], job['skills_required'], self.profile)
+        return {**state, "job_description": job['description'], "cover_letter": cover_letter}
 
-    def generate_interview_script_content(self, state):
-        print(Fore.YELLOW + "----- Generating call script -----\n" + Style.RESET_ALL)
-        matches = state["matches"]
-        job_description = str(matches[-1])
-        call_script = generate_interview_script_content(job_description)
-        return {"call_script": call_script}
+    async def generate_intro_message(self, state: GraphState) -> GraphState:
+        print(Fore.YELLOW + "----- Generating intro message -----\n" + Style.RESET_ALL)
+        job = state['matches'][-1]
+        intro_message = await generate_document("intro_message", job['title'], job['description'], job['skills_required'], self.profile)
+        return {**state, "intro_message": intro_message}
 
-    def save_job_application_content(self, state):
-        print(
-            Fore.YELLOW + "----- Saving cover letter & script -----\n" + Style.RESET_ALL
-        )
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    def save_job_application_content(self, state: GraphState) -> GraphState:
+        print(Fore.YELLOW + "----- Saving cover letter & script -----\n" + Style.RESET_ALL)
+        timestamp = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
 
         with open(COVER_LETTERS_FILE, "a") as file:
             file.write("\n" + "=" * 80 + "\n")
             file.write(f"DATE: {timestamp}\n")
             file.write("=" * 80 + "\n\n")
 
-            # Job Description Section
             file.write("### Job Description ###\n")
             file.write(state["job_description"] + "\n\n")
 
-            # Cover Letter Section
             file.write("### Cover Letter ###\n")
             file.write(state["cover_letter"] + "\n\n")
 
-            # Call Script Section
-            file.write("### Call Script ###\n")
-            file.write(state["call_script"] + "\n")
+            file.write("### Intro Message ###\n")
+            file.write(state["intro_message"] + "\n")
 
             file.write("\n" + "/" * 100 + "\n")
 
@@ -150,24 +108,17 @@ class UpworkAutomation:
         state["matches"].pop()
         return {"matches": state["matches"]}
 
-    def build_graph(self):
+    def build_graph(self) -> StateGraph:
         graph = StateGraph(GraphState)
 
         # create all required nodes
         graph.add_node("scrape_upwork_jobs", self.scrape_upwork_jobs)
         graph.add_node("score_scraped_jobs", self.score_scraped_jobs)
         graph.add_node("check_for_job_matches", self.check_for_job_matches)
-        graph.add_node(
-            "generate_job_application_content", self.generate_job_application_content
-        )
+        graph.add_node("generate_job_application_content", self.generate_job_application_content)
         graph.add_node("generate_cover_letter", self.generate_cover_letter)
-        graph.add_node(
-            "generate_interview_script_content",
-            self.generate_interview_script_content,
-        )
-        graph.add_node(
-            "save_job_application_content", self.save_job_application_content
-        )
+        graph.add_node("generate_intro_message", self.generate_intro_message)
+        graph.add_node("save_job_application_content", self.save_job_application_content)
 
         # Link nodes to complete workflow
         graph.set_entry_point("scrape_upwork_jobs")
@@ -179,21 +130,15 @@ class UpworkAutomation:
             {"Process jobs": "generate_job_application_content", "No matches": END},
         )
         graph.add_edge("generate_job_application_content", "generate_cover_letter")
-        graph.add_edge(
-            "generate_job_application_content", "generate_interview_script_content"
-        )
+        graph.add_edge("generate_job_application_content", "generate_intro_message")
         graph.add_edge("generate_cover_letter", "save_job_application_content")
-        graph.add_edge(
-            "generate_interview_script_content", "save_job_application_content"
-        )
+        graph.add_edge("generate_intro_message", "save_job_application_content")
         graph.add_edge("save_job_application_content", "check_for_job_matches")
 
         return graph.compile()
 
-    def run(self, job_title):
-        print(
-            Fore.BLUE + "----- Running Upwork Jobs Automation -----\n" + Style.RESET_ALL
-        )
+    async def run(self, job_title: str) -> GraphState:
+        print(Fore.BLUE + "----- Running Upwork Jobs Automation -----\n" + Style.RESET_ALL)
         config = {"recursion_limit": 1000}
-        state = self.graph.invoke({"job_title": job_title}, config)
+        state = await self.graph.invoke({"job_title": job_title}, config)
         return state
