@@ -10,5 +10,6 @@
   "deploy_tag": "latest",
   "build_command": "pip install -r requirements.txt",
   "start_command": "python3 main.py",
-  "actorSpecification": 1
+  "actorSpecification": 1,
+  "input": "./INPUT_SCHEMA.json"
 }
