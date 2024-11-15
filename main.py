@@ -12,7 +12,7 @@ src_path = os.path.abspath('src')
 if src_path not in sys.path:
     sys.path.append(src_path)
 
-from utils import run_apify_actor  # Assuming run_apify_actor is in utils.py inside src/
+from .src.utils import run_apify_actor  # Assuming run_apify_actor is in utils.py inside src/
 
 async def main():
     # Retrieve API token from environment variable
