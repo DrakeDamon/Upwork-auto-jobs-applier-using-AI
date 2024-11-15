@@ -14,9 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set the timezone
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# Additional step to install Node.js and npm
+# Install Node.js
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && \
-    apt-get install -y nodejs npm
+    apt-get install -y nodejs
+
+# Verify Node.js and npm installation
+RUN node --version && npm --version
 
 # Create a user called 'myuser'
 RUN useradd -m myuser
@@ -27,18 +30,14 @@ USER myuser
 # Set the working directory in the user's home directory
 WORKDIR /home/myuser
 
-# Install Python dependencies if you have any
-# COPY requirements.txt .
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Node.js dependencies if you have a package.json
-COPY package.json package-lock.json ./
-RUN npm install
-
 # Copy application code
 COPY . .
 
-FROM builder AS final
+# Install Python dependencies if you have any
+RUN pip install --no-cache-dir -r requirements.txt  # Make sure requirements.txt exists
 
-# Set CMD to run npm start
-CMD ["npm", "start", "-s"]
+# Install Node.js dependencies if you have a package.json
+RUN npm install  # Make sure package.json exists in the root
+
+# Set CMD to run the Python application
+CMD ["python3", "main.py"]
