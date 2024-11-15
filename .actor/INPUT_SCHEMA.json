@@ -6,7 +6,8 @@
     "searchQuery": {
       "title": "Search Query",
       "type": "string",
-      "description": "Enter the term to search for."
+      "description": "Enter the term to search for.",
+      "editor": "textfield"
     },
     "maxResults": {
       "title": "Maximum Results",
